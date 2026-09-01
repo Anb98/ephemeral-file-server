@@ -5,6 +5,7 @@ import { createServer } from "node:http";
 
 import { ImageRouter } from "./router.js";
 import { StorageServiceLive } from "./services/StorageService.js";
+import { FileExpiryLive } from "./services/FileExpiry.js";
 import { ServerConfig } from "./config.js";
 
 const ServerConfigLayer = Layer.effectDiscard(
@@ -32,4 +33,10 @@ const AppLive = ImageRouter.pipe(HttpServer.serve(HttpMiddleware.logger)).pipe(
   Layer.provide(NodeFileSystem.layer),
 );
 
-Effect.runFork(Layer.launch(AppLive).pipe(Effect.provide(ServerConfigLayer)));
+const SweeperLive = FileExpiryLive.pipe(Layer.provide(NodeFileSystem.layer));
+
+Effect.runFork(
+  Layer.launch(Layer.merge(AppLive, SweeperLive)).pipe(
+    Effect.provide(ServerConfigLayer),
+  ),
+);

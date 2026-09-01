@@ -22,6 +22,7 @@ Required Node.js version is **v22.x** and relies on Yarn for package management.
    HOST=0.0.0.0
    BASE_URL=http://localhost:3000
    UPLOAD_DIR=/tmp/ephemeral-uploads
+   FILE_TTL_HOURS=24
    ```
 
 3. **Install Dependencies**
@@ -87,3 +88,14 @@ If you request the same object again:
 ```http
 HTTP/1.1 404 Not Found
 ```
+
+## Expiry behavior
+
+Every uploaded file has a single, global time-to-live controlled by
+`FILE_TTL_HOURS` (default `24`, must be a positive number). A background sweep
+runs hourly (or on the TTL interval, whichever is shorter) and removes any
+file older than the TTL whether or not it was ever retrieved. The read
+endpoint also enforces the TTL on every request, so an expired file is never
+served even if the sweep hasn't run yet. There is no per-upload override, and
+the upload response never discloses an expiration time. An expired file, an
+already-read file, and an unknown id all return the identical `404 Not Found`.

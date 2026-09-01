@@ -7,4 +7,11 @@ export const ServerConfig = Config.all({
     Config.withDefault("http://localhost:3000"),
   ),
   uploadDir: Config.string("UPLOAD_DIR").pipe(Config.withDefault("./uploads")),
+  ttlHours: Config.number("FILE_TTL_HOURS").pipe(
+    Config.validate({
+      message: "FILE_TTL_HOURS must be greater than 0",
+      validation: (h) => h > 0,
+    }),
+    Config.withDefault(24),
+  ),
 });

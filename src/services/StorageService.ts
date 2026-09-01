@@ -4,6 +4,7 @@ import * as path from "node:path";
 import * as crypto from "node:crypto";
 import * as fsPromises from "node:fs/promises";
 import { ServerConfig } from "../config.js";
+import { HOUR_MS, isExpired } from "./FileExpiry.js";
 
 export interface StorageService {
   readonly saveFile: (
@@ -24,6 +25,7 @@ export const StorageServiceLive = Layer.effect(
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem;
     const config = yield* ServerConfig;
+    const ttlMs = config.ttlHours * HOUR_MS;
 
     // Ensure upload dir exists
     yield* fs
@@ -56,6 +58,13 @@ export const StorageServiceLive = Layer.effect(
           }
 
           const filepath = path.join(config.uploadDir, filename);
+
+          const info = yield* fs.stat(filepath); // stat failure => file already gone => 404, correct
+          if (isExpired(info, Date.now(), ttlMs)) {
+            yield* fs.remove(filepath).pipe(Effect.catchAll(() => Effect.void));
+            return yield* Effect.fail(new Error("Image not found")); // identical to line 55
+          }
+
           const buffer = yield* fs.readFile(filepath);
 
           // Delete it after reading to ensure ephemeral nature
